@@ -36,4 +36,4 @@ for _ in range(1000):
     action = np.random.uniform(action_min, action_max)
     obs, reward, done, info = env.step(action)
 
-env.close()
+# env.close()

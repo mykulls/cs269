@@ -1,13 +1,17 @@
-import gym
-import envs # This imports envs/__init__.py and triggers registration
+import robosuite as suite
 from stable_baselines3 import PPO  # Assuming you're using PPO for training
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 # Create the environment using gym.make()
-env = gym.make("BottleFlipTask-v0")  # This uses the environment registered in envs/__init__.py
-
-# Wrap the environment for stable-baselines3 (if using RL libraries like stable-baselines3)
-env = DummyVecEnv([lambda: env])
+env = suite.make(
+    env_name="BottleFlipTask",  # Your custom environment name
+    robots=["Panda"],  # Robot to use
+    has_renderer=True,
+    has_offscreen_renderer=False,
+    ignore_done=True,
+    use_camera_obs=False,
+    control_freq=20,
+)
 
 # Create the model (using PPO as an example)
 model = PPO("MlpPolicy", env, verbose=1)
@@ -21,7 +25,10 @@ model.save("ppo_bottle_flip")
 # Evaluate the trained model (optional)
 obs = env.reset()
 for _ in range(1000):
+    env.render()
     action, _state = model.predict(obs)
     obs, reward, done, info = env.step(action)
     if done:
         obs = env.reset()
+
+# env.close()
