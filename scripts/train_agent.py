@@ -1,34 +1,36 @@
-import robosuite as suite
-from stable_baselines3 import PPO  # Assuming you're using PPO for training
-from stable_baselines3.common.vec_env import DummyVecEnv
+import gym
+from stable_baselines3 import PPO
+from stable_baselines3.common.env_checker import check_env
+from gym.envs.registration import register
+from envs.bottle_flip import BottleFlipTask  # Updated import
 
-# Create the environment using gym.make()
-env = suite.make(
-    env_name="BottleFlipTask",  # Your custom environment name
-    robots=["Panda"],  # Robot to use
-    has_renderer=True,
-    has_offscreen_renderer=False,
-    ignore_done=True,
-    use_camera_obs=False,
-    control_freq=20,
+# Register the environment
+register(
+    id="BottleFlipTask-v0",  # Updated ID
+    entry_point="envs.bottle_flip:BottleFlipTask",  # Updated entry point
 )
 
-# Create the model (using PPO as an example)
+# Load the environment
+env = gym.make("BottleFlipTask-v0")
+
+# Ensure compatibility
+check_env(env)
+
+# Wrap the environment for training
+from stable_baselines3.common.env_util import make_vec_env
+env = make_vec_env(lambda: env, n_envs=1)
+
+# Train using PPO
 model = PPO("MlpPolicy", env, verbose=1)
+model.learn(total_timesteps=50000)
 
-# Train the agent
-model.learn(total_timesteps=10000)
-
-# Save the trained model
+# Save the model
 model.save("ppo_bottle_flip")
 
-# Evaluate the trained model (optional)
+# Test the trained agent
+env = gym.make("BottleFlipTask-v0")
 obs = env.reset()
-for _ in range(1000):
-    env.render()
-    action, _state = model.predict(obs)
+for _ in range(100):
+    action, _ = model.predict(obs)
     obs, reward, done, info = env.step(action)
-    if done:
-        obs = env.reset()
-
-# env.close()
+    env.render()
