@@ -12,7 +12,7 @@ from robosuite.utils.observables import Observable, sensor
 from robosuite.utils.placement_samplers import UniformRandomSampler
 from robosuite.utils.transform_utils import convert_quat
 
-import pybullet as p
+# import pybullet as p
 
 class BottleFlipTask(ManipulationEnv):
     """

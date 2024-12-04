@@ -6,4 +6,5 @@ BOTTLE_FLIP_TASK_ARGS = {
     "use_object_obs": True,
     "render_camera": None,
     "control_freq": 20,
+    "reward_shaping": True
 }
