@@ -11,4 +11,7 @@ test:
 
 # Rule to train and test the agent
 agent:
-	$(PYTHON) scripts/train_agent.py $(PYTHON) scripts/test_agent.py
+	$(PYTHON) scripts/test_agent.py
+
+all:
+	train agent
