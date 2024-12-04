@@ -1,23 +1,35 @@
 import robosuite as suite
+from robosuite.environments.base import register_env
 from stable_baselines3 import PPO  # Assuming you're using PPO for training
 from stable_baselines3.common.vec_env import DummyVecEnv
+from robosuite.wrappers import GymWrapper
+from envs.bottle_flip import BottleFlipTask
+
+register_env(BottleFlipTask)
 
 # Create the environment using gym.make()
-env = suite.make(
-    env_name="BottleFlipTask",  # Your custom environment name
-    robots=["Panda"],  # Robot to use
-    has_renderer=True,
-    has_offscreen_renderer=False,
-    ignore_done=True,
-    use_camera_obs=False,
-    control_freq=20,
+env = GymWrapper(
+    suite.make(
+        env_name="BottleFlipTask",  # Your custom environment name
+        robots=["Panda"],  # Robot to use
+        has_renderer=True,
+        has_offscreen_renderer=False,
+        ignore_done=True,
+        use_camera_obs=False,
+        control_freq=20,
+    )
 )
 
+# Wrap in DummyVecEnv for Stable-Baselines3 compatibility
+vec_env = DummyVecEnv([lambda: env])
+
 # Create the model (using PPO as an example)
-model = PPO("MlpPolicy", env, verbose=1)
+model = PPO("MlpPolicy", vec_env, verbose=1)
+# # Create the model (using PPO as an example)
+# model = PPO("MlpPolicy", env, verbose=1)
 
 # Train the agent
-model.learn(total_timesteps=10000)
+model.learn(total_timesteps=100000)
 
 # Save the trained model
 model.save("ppo_bottle_flip")
