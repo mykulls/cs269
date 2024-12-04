@@ -11,7 +11,8 @@ setup(
         "robosuite>=1.5.0",   # Robosuite package
         "robosuite_models",    # Include robosuite_models package
         "gym>=0.21.0",        # Gym for RL compatibility
-        "stable-baselines3>=1.7.0"  # Stable-Baselines3 for training
+        "stable-baselines3>=1.7.0",  # Stable-Baselines3 for training
+        "h5py", # h5py required by GymWrapper
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
