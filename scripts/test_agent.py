@@ -17,8 +17,7 @@ env_render = GymWrapper(
     )
 )
 
-root_path = os.path.abspath(os.path.join(os.getcwd(), ".."))
-model_path = root_path + "/models/"
+model_path = "./models/"
 filename = "ppo_bottle_flip"
 model = PPO.load(model_path + filename)
 env_test = DummyVecEnv([lambda : env_render])
