@@ -1,30 +1,32 @@
 import robosuite as suite
 from robosuite.environments.base import register_env
 from stable_baselines3 import PPO  # Assuming you're using PPO for training
-from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from robosuite.wrappers import GymWrapper
 from envs.bottle_flip import BottleFlipTask
+from config import BOTTLE_FLIP_TASK_ARGS
+
+def wrap_env(env):
+    wrapped_env = Monitor(env)                          # Needed for extracting eprewmean and eplenmean
+    wrapped_env = DummyVecEnv([lambda : wrapped_env])   # Needed for all environments (e.g. used for mulit-processing)
+    wrapped_env = VecNormalize(wrapped_env)             # Needed for improving training when using MuJoCo envs?
+    return wrapped_env
 
 register_env(BottleFlipTask)
 
 # Create the environment using gym.make()
 env = GymWrapper(
     suite.make(
-        env_name="BottleFlipTask",  # Your custom environment name
-        robots=["Panda"],  # Robot to use
-        has_renderer=True,
-        has_offscreen_renderer=False,
-        ignore_done=True,
-        use_camera_obs=False,
-        control_freq=20,
+        has_renderer=False,
+        **BOTTLE_FLIP_TASK_ARGS,
     )
 )
 
-# Wrap in DummyVecEnv for Stable-Baselines3 compatibility
-vec_env = DummyVecEnv([lambda: env])
+env = wrap_env(env)
 
 # Create the model (using PPO as an example)
-model = PPO("MlpPolicy", vec_env, verbose=1)
+model = PPO("MlpPolicy", env, verbose=1)
 # # Create the model (using PPO as an example)
 # model = PPO("MlpPolicy", env, verbose=1)
 
@@ -32,11 +34,7 @@ model = PPO("MlpPolicy", vec_env, verbose=1)
 model.learn(total_timesteps=100000)
 
 # Save the model
-model.save("ppo_bottle_flip")
-
-# Test the trained agent
-obs = env.reset()
-for _ in range(100):
-    action, _ = model.predict(obs)
-    obs, reward, done, info = env.step(action)
-    env.render()
+model_path = "./models/"
+filename = "ppo_bottle_flip"
+model.save(model_path + filename)
+env.save(model_path + "vec_normalize_" + filename + '.pkl')

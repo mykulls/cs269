@@ -2,4 +2,4 @@
 
 Install dependencies with `pip install -e .`
 
-Run RL training with `make train`. Test the environment with `make test`.
+Test the environment with `make test`. Run RL training with `make train`. Run testing of the agent with `make agent`. Run training and testing of the agent with `make all`.
