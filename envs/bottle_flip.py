@@ -5,7 +5,7 @@ import numpy as np
 from robosuite.environments.manipulation.manipulation_env import ManipulationEnv
 from robosuite.models.arenas import TableArena
 # from robosuite.models.objects import BoxObject
-from robosuite.models.objects import BottleObject
+from robosuite.models.objects import BottleObject,  BallObject
 from robosuite.models.tasks import ManipulationTask
 from robosuite.utils.mjcf_utils import CustomMaterial
 from robosuite.utils.observables import Observable, sensor
@@ -304,6 +304,10 @@ class BottleFlipTask(ManipulationEnv):
         self.bottle = BottleObject(
             name="bottle"
         )
+        # self.ball = BallObject(
+        #     name="ball",
+        #     size=[0.03]
+        # )
 
         # Create placement initializer
         if self.placement_initializer is not None:
@@ -311,6 +315,7 @@ class BottleFlipTask(ManipulationEnv):
             self.placement_initializer.reset()
             # Directly place the object at (0, 0)
             self.placement_initializer.add_objects(self.bottle)
+            # self.placement_initializer.add_objects(self.ball)
         else:
             # Manually place the bottle at (0, 0)
             self.placement_initializer = UniformRandomSampler(
@@ -324,6 +329,11 @@ class BottleFlipTask(ManipulationEnv):
                 reference_pos=self.table_offset,
                 z_offset=0.01,
             )
+            # self.placement_initializer.add_objects(self.ball)
+            # self.placement_initializer.add_objects(
+            #     object_list=[self.ball, self.bottle], 
+            #     positions=[[0, 0, 0.3], [0, 0, 0.01]],  # Specify manual positions
+            # )
 
         # task includes arena, robot, and objects of interest
         self.model = ManipulationTask(
