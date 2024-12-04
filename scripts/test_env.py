@@ -33,6 +33,8 @@ for _ in range(1000):
 
     # assert "object-state" not in obs
     env.render()
+    # For debugging: this pauses the simulation until u press enter
+    # input("press enter")
     action = np.random.uniform(action_min, action_max)
     obs, reward, done, info = env.step(action)
 

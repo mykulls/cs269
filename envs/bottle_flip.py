@@ -9,10 +9,10 @@ from robosuite.models.objects import BottleObject,  BallObject
 from robosuite.models.tasks import ManipulationTask
 from robosuite.utils.mjcf_utils import CustomMaterial
 from robosuite.utils.observables import Observable, sensor
-from robosuite.utils.placement_samplers import UniformRandomSampler
+from robosuite.utils.placement_samplers import UniformRandomSampler, SequentialCompositeSampler
 from robosuite.utils.transform_utils import convert_quat
 
-import pybullet as p
+# import pybullet as p
 
 class BottleFlipTask(ManipulationEnv):
     """
@@ -304,31 +304,62 @@ class BottleFlipTask(ManipulationEnv):
         self.bottle = BottleObject(
             name="bottle"
         )
-        # self.ball = BallObject(
-        #     name="ball",
-        #     size=[0.03]
-        # )
+        self.bottle.set_scale(1)
+        self.ball = BallObject(
+            name="ball",
+            size=[0.01]
+        )
 
         # Create placement initializer
         if self.placement_initializer is not None:
             # Reset the placement initializer
             self.placement_initializer.reset()
             # Directly place the object at (0, 0)
-            self.placement_initializer.add_objects(self.bottle)
+            self.placement_initializer.add_objects_to_sampler("BottleObjectSampler", self.bottle)
+            self.placement_initializer.add_objects_to_sampler("BallObjectSampler", self.ball)
             # self.placement_initializer.add_objects(self.ball)
         else:
-            # Manually place the bottle at (0, 0)
-            self.placement_initializer = UniformRandomSampler(
-                name="ObjectSampler",
-                mujoco_objects=self.bottle,
-                x_range=[0, 0],  # No range, fixed at 0
-                y_range=[0, 0],  # No range, fixed at 0
-                rotation=None,
-                ensure_object_boundary_in_range=False,
-                ensure_valid_placement=True,
-                reference_pos=self.table_offset,
-                z_offset=0.01,
+            self.placement_initializer = SequentialCompositeSampler(name="BottleWithParticles")
+            self.placement_initializer.append_sampler(
+                sampler=UniformRandomSampler(
+                    name=f"BottleObjectSampler",
+                    x_range=[0, 0],
+                    y_range=[0, 0],
+                    rotation=None,
+                    ensure_object_boundary_in_range=False,
+                    ensure_valid_placement=False,
+                    reference_pos=self.table_offset,
+                    z_offset=0.01,
+                )
             )
+            self.placement_initializer.append_sampler(
+                sampler=UniformRandomSampler(
+                    name=f"BallObjectSampler",
+                    x_range=[0,0],
+                    y_range=[0,0],
+                    rotation=None,
+                    ensure_object_boundary_in_range=False,
+                    ensure_valid_placement=False,
+                    reference_pos=self.table_offset,
+                    z_offset=0.10,
+                )
+            )
+            self.placement_initializer.add_objects_to_sampler("BottleObjectSampler", self.bottle)
+            self.placement_initializer.add_objects_to_sampler("BallObjectSampler", self.ball)
+            # self.placement_initializer.add_objects(self.bottle)
+            # self.placement_initializer.add_objects(self.ball)
+            # Manually place the bottle at (0, 0)
+            # self.placement_initializer = UniformRandomSampler(
+            #     name="ObjectSampler",
+            #     mujoco_objects=[self.bottle, self.ball],
+            #     x_range=[0, 0],  # No range, fixed at 0
+            #     y_range=[0, 0],  # No range, fixed at 0
+            #     rotation=None,
+            #     ensure_object_boundary_in_range=False,
+            #     ensure_valid_placement=True,
+            #     reference_pos=self.table_offset,
+            #     z_offset=0.01,
+            # )
             # self.placement_initializer.add_objects(self.ball)
             # self.placement_initializer.add_objects(
             #     object_list=[self.ball, self.bottle], 
@@ -339,7 +370,7 @@ class BottleFlipTask(ManipulationEnv):
         self.model = ManipulationTask(
             mujoco_arena=mujoco_arena,
             mujoco_robots=[robot.robot_model for robot in self.robots],
-            mujoco_objects=self.bottle,
+            mujoco_objects=[self.bottle, self.ball],
         )
 
     def _setup_references(self):
