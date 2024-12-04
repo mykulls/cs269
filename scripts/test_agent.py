@@ -6,19 +6,14 @@ from stable_baselines3 import PPO  # Assuming you're using PPO for training
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from robosuite.wrappers import GymWrapper
 from envs.bottle_flip import BottleFlipTask
+from config import BOTTLE_FLIP_TASK_ARGS
 
 register_env(BottleFlipTask)
 
 env_render = GymWrapper(
     suite.make(
-        env_name="BottleFlipTask",  # Your custom environment name
-        robots=["Panda"],  # Robot to use
         has_renderer=True,
-        has_offscreen_renderer=False,
-        use_camera_obs=False,
-        use_object_obs=True,
-        render_camera=None,
-        control_freq=20,
+        **BOTTLE_FLIP_TASK_ARGS,
     )
 )
 

@@ -13,5 +13,4 @@ test:
 agent:
 	$(PYTHON) scripts/test_agent.py
 
-all:
-	train agent
+all: train agent

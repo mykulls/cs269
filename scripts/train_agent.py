@@ -5,6 +5,7 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from robosuite.wrappers import GymWrapper
 from envs.bottle_flip import BottleFlipTask
+from config import BOTTLE_FLIP_TASK_ARGS
 
 def wrap_env(env):
     wrapped_env = Monitor(env)                          # Needed for extracting eprewmean and eplenmean
@@ -17,14 +18,8 @@ register_env(BottleFlipTask)
 # Create the environment using gym.make()
 env = GymWrapper(
     suite.make(
-        env_name="BottleFlipTask",  # Your custom environment name
-        robots=["Panda"],  # Robot to use
         has_renderer=False,
-        has_offscreen_renderer=False,
-        use_camera_obs=False,
-        use_object_obs=True,
-        render_camera=None,
-        control_freq=20,
+        **BOTTLE_FLIP_TASK_ARGS,
     )
 )
 
@@ -36,7 +31,7 @@ model = PPO("MlpPolicy", env, verbose=1)
 # model = PPO("MlpPolicy", env, verbose=1)
 
 # Train the agent
-model.learn(total_timesteps=50000)
+model.learn(total_timesteps=100000)
 
 # Save the model
 model_path = "./models/"
