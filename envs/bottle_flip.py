@@ -12,6 +12,7 @@ from robosuite.utils.observables import Observable, sensor
 from robosuite.utils.placement_samplers import UniformRandomSampler
 from robosuite.utils.transform_utils import convert_quat
 
+import pybullet as p
 
 class BottleFlipTask(ManipulationEnv):
     """
@@ -387,6 +388,33 @@ class BottleFlipTask(ManipulationEnv):
 
         return observables
 
+    def get_initial_joint_pos():
+        # Initialize PyBullet (can use DIRECT mode for computations only)
+        physics_client = p.connect(p.DIRECT)
+
+        # Load URDF of your robot (example uses Panda URDF)
+        robot_id = p.loadURDF("./panda.urdf", useFixedBase=True)
+
+        # Get joint information
+        num_joints = p.getNumJoints(robot_id)
+        print("Num joints: ",num_joints)
+
+        # Define desired Cartesian position and orientation (x, y, z, quaternion)
+        # desired_position = [1.1, 0.32, -0.1]
+        desired_position = [0.22,0.00,0.31] # x, y, z (x is pointing out of screen, y is to the right, z is upwards)
+        desired_orientation = p.getQuaternionFromEuler([1.57079, 0, 0])  # Example: no rotation
+
+        # Compute inverse kinematics
+        desired_joint_positions = p.calculateInverseKinematics(
+            robot_id,
+            endEffectorLinkIndex=11,  # End-effector link index (specific to your robot model)
+            targetPosition=desired_position,
+            targetOrientation=desired_orientation,
+        )
+        # desired_joint_positions = [0.0, -1.2, 0.0, -1.5, 0.0, 1.0, 0.5]  # Example joint angles for Panda arm
+        gripper_closed_qpos = 0.02  # Position for the gripper fingers to be closed
+        return desired_joint_positions, gripper_closed_qpos
+
     def _reset_internal(self):
         """
         Resets simulation internal configurations.
@@ -402,6 +430,23 @@ class BottleFlipTask(ManipulationEnv):
             # Loop through all objects and reset their positions
             for obj_pos, obj_quat, obj in object_placements.values():
                 self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
+        
+        # Define desired joint positions for the robot arm
+        # this functon uses pybullet which was annoying to install, you can just use these hardcoded values instead
+        # desired_joint_positions, gripper_closed_qpos = self.get_initial_joint_pos()
+        desired_joint_positions = [0.01900387437836895, 2.2761849205082134, 0.008303189898753132, 1.7381010809619388, -0.014802214410489498, 0.5344344885164778, 0.0]
+        gripper_closed_qpos = 0.2
+
+        print(desired_joint_positions)
+        for i, joint_name in enumerate(self.sim.model.joint_names):
+            if "gripper" not in joint_name and "robot" in joint_name:  # Avoid gripper joints
+                print(joint_name)
+                self.sim.data.set_joint_qpos(joint_name, desired_joint_positions[i])
+
+        # Set the gripper joint positions (e.g., fingers closed)
+        self.sim.data.set_joint_qpos("gripper0_right_finger_joint1", gripper_closed_qpos)
+        self.sim.data.set_joint_qpos("gripper0_right_finger_joint2", gripper_closed_qpos)
+
 
     def visualize(self, vis_settings):
         """
