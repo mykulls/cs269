@@ -31,16 +31,12 @@ model = PPO("MlpPolicy", vec_env, verbose=1)
 # Train the agent
 model.learn(total_timesteps=100000)
 
-# Save the trained model
+# Save the model
 model.save("ppo_bottle_flip")
 
-# Evaluate the trained model (optional)
+# Test the trained agent
 obs = env.reset()
-for _ in range(1000):
-    env.render()
-    action, _state = model.predict(obs)
+for _ in range(100):
+    action, _ = model.predict(obs)
     obs, reward, done, info = env.step(action)
-    if done:
-        obs = env.reset()
-
-# env.close()
+    env.render()
