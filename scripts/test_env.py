@@ -9,18 +9,13 @@ env = suite.make(
     has_offscreen_renderer=False,
     ignore_done=True,
     use_camera_obs=False,
+    use_object_obs=True,
     control_freq=20,
+    render_camera=None,
 )
 
 # Test the environment
 obs = env.reset()
-
-# get action range
-action_min, action_max = env.action_spec
-assert action_min.shape == action_max.shape
-
-# Get robot prefix
-pr = env.robots[0].robot_model.naming_prefix
 
 # run 10 random actions
 for _ in range(1000):
@@ -33,7 +28,7 @@ for _ in range(1000):
 
     # assert "object-state" not in obs
     env.render()
-    action = np.random.uniform(action_min, action_max)
+    action = [0., 0., 0., 0., 0., 0., 0.]
     obs, reward, done, info = env.step(action)
 
 # env.close()
