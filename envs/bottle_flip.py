@@ -59,7 +59,7 @@ class BottleFlipTask(ManipulationEnv):
 
         use_camera_obs (bool): if True, every observation includes rendered image(s)
 
-        use_object_obs (bool): if True, include object (cube) information in
+        use_object_obs (bool): if True, include object (bottle) information in
             the observation.
 
         reward_scale (None or float): Scales the normalized reward function by the amount specified.
@@ -220,13 +220,13 @@ class BottleFlipTask(ManipulationEnv):
 
         Sparse un-normalized reward:
 
-            - a discrete reward of 2.25 is provided if the cube is lifted
+            - a discrete reward of 2.25 is provided if the bottle is lifted
 
         Un-normalized summed components if using reward shaping:
 
-            - Reaching: in [0, 1], to encourage the arm to reach the cube
-            - Grasping: in {0, 0.25}, non-zero if arm is grasping the cube
-            - Lifting: in {0, 1}, non-zero if arm has lifted the cube
+            - Reaching: in [0, 1], to encourage the arm to reach the bottle
+            - Grasping: in {0, 0.25}, non-zero if arm is grasping the bottle
+            - Lifting: in {0, 1}, non-zero if arm has lifted the bottle
 
         The sparse reward only consists of the lifting component.
 
@@ -252,10 +252,12 @@ class BottleFlipTask(ManipulationEnv):
             dist = self._gripper_to_target(
                 gripper=self.robots[0].gripper, target=self.bottle.root_body, target_type="body", return_distance=True
             )
+            # print("dist: ", dist)
             reaching_reward = 1 - np.tanh(10.0 * dist)
             reward += reaching_reward
-
+            # print("reward", reward)
             # grasping reward
+
             if self._check_grasp(gripper=self.robots[0].gripper, object_geoms=self.bottle):
                 reward += 0.25
 
@@ -287,7 +289,7 @@ class BottleFlipTask(ManipulationEnv):
 
         # initialize objects of interest
         # tex_attrib = {
-        #     "type": "cube",
+        #     "type": "bottle",
         # }
         # mat_attrib = {
         #     "texrepeat": "1 1",
@@ -357,7 +359,7 @@ class BottleFlipTask(ManipulationEnv):
             # define observables modality
             modality = "object"
 
-            # cube-related observables
+            # bottle-related observables
             @sensor(modality=modality)
             def bottle_pos(obs_cache):
                 return np.array(self.sim.data.body_xpos[self.bottle_body_id])
@@ -371,9 +373,9 @@ class BottleFlipTask(ManipulationEnv):
             arm_prefixes = self._get_arm_prefixes(self.robots[0], include_robot_name=False)
             full_prefixes = self._get_arm_prefixes(self.robots[0])
 
-            # gripper to cube position sensor; one for each arm
+            # gripper to bottle position sensor; one for each arm
             sensors += [
-                self._get_obj_eef_sensor(full_pf, "cube_pos", f"{arm_pf}gripper_to_cube_pos", modality)
+                self._get_obj_eef_sensor(full_pf, "bottle_pos", f"{arm_pf}gripper_to_bottle_pos", modality)
                 for arm_pf, full_pf in zip(arm_prefixes, full_prefixes)
             ]
             names = [s.__name__ for s in sensors]
@@ -387,33 +389,6 @@ class BottleFlipTask(ManipulationEnv):
                 )
 
         return observables
-
-    def get_initial_joint_pos():
-        # Initialize PyBullet (can use DIRECT mode for computations only)
-        physics_client = p.connect(p.DIRECT)
-
-        # Load URDF of your robot (example uses Panda URDF)
-        robot_id = p.loadURDF("./panda.urdf", useFixedBase=True)
-
-        # Get joint information
-        num_joints = p.getNumJoints(robot_id)
-        print("Num joints: ",num_joints)
-
-        # Define desired Cartesian position and orientation (x, y, z, quaternion)
-        # desired_position = [1.1, 0.32, -0.1]
-        desired_position = [0.22,0.00,0.31] # x, y, z (x is pointing out of screen, y is to the right, z is upwards)
-        desired_orientation = p.getQuaternionFromEuler([1.57079, 0, 0])  # Example: no rotation
-
-        # Compute inverse kinematics
-        desired_joint_positions = p.calculateInverseKinematics(
-            robot_id,
-            endEffectorLinkIndex=11,  # End-effector link index (specific to your robot model)
-            targetPosition=desired_position,
-            targetOrientation=desired_orientation,
-        )
-        # desired_joint_positions = [0.0, -1.2, 0.0, -1.5, 0.0, 1.0, 0.5]  # Example joint angles for Panda arm
-        gripper_closed_qpos = 0.02  # Position for the gripper fingers to be closed
-        return desired_joint_positions, gripper_closed_qpos
 
     def _reset_internal(self):
         """
@@ -432,25 +407,22 @@ class BottleFlipTask(ManipulationEnv):
                 self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
         
         # Define desired joint positions for the robot arm
-        # this functon uses pybullet which was annoying to install, you can just use these hardcoded values instead
-        # desired_joint_positions, gripper_closed_qpos = self.get_initial_joint_pos()
-        desired_joint_positions = [0.01900387437836895, 2.2761849205082134, 0.008303189898753132, 1.7381010809619388, -0.014802214410489498, 0.5344344885164778, 0.0]
+        desired_joint_positions = [0, 1.7, 0, 0.9, 0, 1.8, 0.75]
         gripper_closed_qpos = 0.2
 
-        print(desired_joint_positions)
+        # # print(desired_joint_positions)
         for i, joint_name in enumerate(self.sim.model.joint_names):
             if "gripper" not in joint_name and "robot" in joint_name:  # Avoid gripper joints
-                print(joint_name)
+                # print(joint_name)
                 self.sim.data.set_joint_qpos(joint_name, desired_joint_positions[i])
 
         # Set the gripper joint positions (e.g., fingers closed)
         self.sim.data.set_joint_qpos("gripper0_right_finger_joint1", gripper_closed_qpos)
         self.sim.data.set_joint_qpos("gripper0_right_finger_joint2", gripper_closed_qpos)
 
-
     def visualize(self, vis_settings):
         """
-        In addition to super call, visualize gripper site proportional to the distance to the cube.
+        In addition to super call, visualize gripper site proportional to the distance to the bottle.
 
         Args:
             vis_settings (dict): Visualization keywords mapped to T/F, determining whether that specific
@@ -460,19 +432,19 @@ class BottleFlipTask(ManipulationEnv):
         # Run superclass method first
         super().visualize(vis_settings=vis_settings)
 
-        # Color the gripper visualization site according to its distance to the cube
+        # Color the gripper visualization site according to its distance to the bottle
         if vis_settings["grippers"]:
             self._visualize_gripper_to_target(gripper=self.robots[0].gripper, target=self.bottle)
 
     def _check_success(self):
         """
-        Check if cube has been lifted.
+        Check if bottle has been lifted.
 
         Returns:
-            bool: True if cube has been lifted
+            bool: True if bottle has been lifted
         """
         bottle_height = self.sim.data.body_xpos[self.bottle_body_id][2]
         table_height = self.model.mujoco_arena.table_offset[2]
 
-        # cube is higher than the table top above a margin
-        return bottle_height > table_height + 0.04
+        # bottle is higher than the table top above a margin
+        return bottle_height > table_height + 0.08
