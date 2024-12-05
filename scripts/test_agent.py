@@ -22,10 +22,6 @@ filename = "ppo_bottle_flip"
 model = PPO.load(model_path + filename)
 # filename = "td3_bottle_flip"
 # model = TD3.load(MODEL_PATH + filename)
-env_test = DummyVecEnv([lambda : env])
-env_test = VecNormalize.load(model_path + "vec_normalize_" + filename + '.pkl', env_test)
-env_test.training = False
-env_test.norm_reward = False
 
 # Test the trained agent
 obs, _ = env.reset()
