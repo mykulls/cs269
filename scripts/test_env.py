@@ -28,7 +28,7 @@ for _ in range(1000):
 
     # assert "object-state" not in obs
     env.render()
-    action = [0., 0., 0., 0., 0., 0., 0.]
+    action = np.random.uniform(action_min, action_max)
     obs, reward, done, info = env.step(action)
 
 # env.close()

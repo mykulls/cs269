@@ -12,7 +12,7 @@ from robosuite.utils.observables import Observable, sensor
 from robosuite.utils.placement_samplers import UniformRandomSampler
 from robosuite.utils.transform_utils import convert_quat
 
-# import pybullet as p
+import pybullet as p
 
 class BottleFlipTask(ManipulationEnv):
     """
@@ -145,7 +145,7 @@ class BottleFlipTask(ManipulationEnv):
         controller_configs=None,
         gripper_types="default",
         initialization_noise="default",
-        table_full_size=(0.8, 0.8, 0.05),
+        table_full_size=(2, 2, 0.05),
         table_friction=(1.0, 5e-3, 1e-4),
         use_camera_obs=True,
         use_object_obs=True,
@@ -185,6 +185,9 @@ class BottleFlipTask(ManipulationEnv):
 
         # object placement initializer
         self.placement_initializer = placement_initializer
+        
+        self.first_step = True
+        self.second_step = False
 
         super().__init__(
             robots=robots,
@@ -275,6 +278,7 @@ class BottleFlipTask(ManipulationEnv):
 
         # Adjust base pose accordingly
         xpos = self.robots[0].robot_model.base_xpos_offset["table"](self.table_full_size[0])
+        print("Robot base xpos: ",xpos)
         self.robots[0].robot_model.set_base_xpos(xpos)
 
         # load model for table top workspace
@@ -318,7 +322,7 @@ class BottleFlipTask(ManipulationEnv):
             self.placement_initializer = UniformRandomSampler(
                 name="ObjectSampler",
                 mujoco_objects=self.bottle,
-                x_range=[0, 0],  # No range, fixed at 0
+                x_range=[-0.4, -0.4],  # No range, fixed at 0
                 y_range=[0, 0],  # No range, fixed at 0
                 rotation=None,
                 ensure_object_boundary_in_range=False,
@@ -390,6 +394,37 @@ class BottleFlipTask(ManipulationEnv):
 
         return observables
 
+    def get_initial_joint_pos(self, desired_position = [0.22,0.00,0.31], euler=[1.5708, 0, 0]):
+        # Initialize PyBullet (can use DIRECT mode for computations only)
+        physics_client = p.connect(p.DIRECT)
+
+        # Load URDF of your robot (example uses Panda URDF)
+        robot_id = p.loadURDF("./panda.urdf", useFixedBase=True)
+
+        # Get joint information
+        num_joints = p.getNumJoints(robot_id)
+        print("Num joints: ",num_joints)
+        for joint_idx in range(p.getNumJoints(robot_id)):
+            joint_info = p.getJointInfo(robot_id, joint_idx)
+            print(f"Joint index: {joint_idx}, Name: {joint_info[1].decode('utf-8')}")
+
+
+        # Define desired Cartesian position and orientation (x, y, z, quaternion)
+        # desired_position = [1.1, 0.32, -0.1]
+        desired_position = desired_position # x, y, z (x is pointing out of screen, y is to the right, z is upwards)
+        desired_orientation = p.getQuaternionFromEuler(euler)  # Example: no rotation
+
+        # Compute inverse kinematics
+        desired_joint_positions = p.calculateInverseKinematics(
+            robot_id,
+            endEffectorLinkIndex=15,  # End-effector link index (specific to your robot model)
+            targetPosition=desired_position,
+            targetOrientation=desired_orientation,
+        )
+        # desired_joint_positions = [0.0, -1.2, 0.0, -1.5, 0.0, 1.0, 0.5]  # Example joint angles for Panda arm
+        gripper_open_qpos = 0.03 # Position for the gripper fingers to be closed
+        return desired_joint_positions, gripper_open_qpos
+
     def _reset_internal(self):
         """
         Resets simulation internal configurations.
@@ -407,18 +442,45 @@ class BottleFlipTask(ManipulationEnv):
                 self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
         
         # Define desired joint positions for the robot arm
-        desired_joint_positions = [0, 1.7, 0, 0.9, 0, 1.8, 0.75]
-        gripper_closed_qpos = 0.2
+        # this functon uses pybullet which was annoying to install, you can just use these hardcoded values instead
+        desired_joint_positions, gripper_open_qpos = self.get_initial_joint_pos(desired_position=[0.67, 0.01, 0.21], euler=[3.1415,0,0])
+        # desired_joint_positions = [0.01900387437836895, 2.2761849205082134, 0.008303189898753132, 1.7381010809619388, -0.014802214410489498, 0.5344344885164778, 0.0]
+        # gripper_closed_qpos = 0.2
 
-        # # print(desired_joint_positions)
         for i, joint_name in enumerate(self.sim.model.joint_names):
             if "gripper" not in joint_name and "robot" in joint_name:  # Avoid gripper joints
                 # print(joint_name)
                 self.sim.data.set_joint_qpos(joint_name, desired_joint_positions[i])
 
         # Set the gripper joint positions (e.g., fingers closed)
-        self.sim.data.set_joint_qpos("gripper0_right_finger_joint1", gripper_closed_qpos)
-        self.sim.data.set_joint_qpos("gripper0_right_finger_joint2", gripper_closed_qpos)
+        self.sim.data.set_joint_qpos("gripper0_right_finger_joint1", gripper_open_qpos)
+        self.sim.data.set_joint_qpos("gripper0_right_finger_joint2", -gripper_open_qpos)
+
+        bottle_qpos = self.sim.data.get_site_xpos("bottle_default_site")
+        # print("Bottle position: ",bottle_qpos)
+
+        self.sim.forward()
+
+    # def step(self, action):
+    #     # print(self.sim.data.get_site_qpos("gripper0_right_finger_joint1"))
+    #     print("gripper 1: ",self.sim.data.get_joint_qpos("gripper0_right_finger_joint1"))
+    #     print("gripper 2: ",self.sim.data.get_joint_qpos("gripper0_right_finger_joint2"))
+    #     if self.first_step:
+    #         self.first_step = False
+    #         self.second_step = True
+    #         return super().step([0,0,0,0,0,0,0])
+    #     elif self.second_step:
+    #         self.second_step = False
+    #         # Ensure bottle is already rendered
+    #         self.sim.forward()
+    #         self.render()
+    #         # close gripper
+    #         print("closing gripper now")
+    #         gripper_closed_qpos = 0.015
+    #         self.sim.data.set_joint_qpos("gripper0_right_finger_joint1", gripper_closed_qpos)
+    #         self.sim.data.set_joint_qpos("gripper0_right_finger_joint2", -gripper_closed_qpos)
+    #         return super().step([0,0,0,0,0,0,0])
+    #     return super().step(action)
 
     def visualize(self, vis_settings):
         """
