@@ -12,6 +12,9 @@ from robosuite.utils.observables import Observable, sensor
 from robosuite.utils.placement_samplers import UniformRandomSampler
 from robosuite.utils.transform_utils import convert_quat
 
+from scipy.spatial.transform import Rotation as R
+
+
 # import pybullet as p
 
 class BottleFlipTask(ManipulationEnv):
@@ -249,13 +252,55 @@ class BottleFlipTask(ManipulationEnv):
         elif self.reward_shaping:
 
             # reaching reward
-            dist = self._gripper_to_target(
-                gripper=self.robots[0].gripper, target=self.bottle.root_body, target_type="body", return_distance=True
-            )
-            # print("dist: ", dist)
-            reaching_reward = 1 - np.tanh(10.0 * dist)
-            reward += reaching_reward
+            # dist = self._gripper_to_target(
+            #     gripper=self.robots[0].gripper, target=self.bottle.root_body, target_type="body", return_distance=True
+            # )
+            # # print("dist: ", dist)
+            # reaching_reward = 1 - np.tanh(10.0 * dist)
+            # reward += reaching_reward
             # print("reward", reward)
+            # print("Bottle body pos: ", self.sim.data.get_body_xpos(self.bottle.root_body))
+            
+
+            # Get position of top of bottle
+            bottle_quaternion = self.sim.data.get_body_xquat(self.bottle.root_body)
+            magnitude = np.sum(np.sqrt(bottle_quaternion[1:]**2))
+            bottle_top_offset = bottle_quaternion[1:]/magnitude * 0.2
+            bottle_bottom_pos = self.sim.data.get_site_xpos("bottle_default_site")
+            bottle_top_pos = bottle_bottom_pos + bottle_top_offset
+            right_gripper_pos = self.sim.data.get_site_xpos("gripper0_right_grip_site")
+            dist_to_top = np.linalg.norm(right_gripper_pos - bottle_top_pos)
+            # print("Dist between gripper and top of bottle: ",dist_to_top)
+            reaching_reward = 1 - np.tanh(10.0 * dist_to_top)
+            reward += reaching_reward
+
+            # print("Bottle top offset: ", bottle_top_offset)
+
+            # bottle_orientation = self.sim.data.get_body_xquat(self.bottle.root_body)  # Quaternion
+            # print("Bottle Orientation: ", bottle_orientation)
+            # rotation = R.from_quat(bottle_orientation)
+            # print("Rotation: ", rotation)
+            # height_offset = np.array([0, 0, 0.2])  # Height along local z-axis
+            # print(height_offset.shape)
+            # # global_offset = rotation_matrix @ height_offset
+            # global_offset = rotation.apply(height_offset)
+            # print("Ofset 1: ", global_offset)
+
+            # adjust_quat = bottle_orientation
+            # adjust_quat[3] += 3.1415926
+            # rot2 = R.from_quat(adjust_quat)
+            # offset2 = rot2.apply(height_offset)
+            # print("Offset2: ",offset2)
+
+            # bottle_bottom_pos = self.sim.data.get_site_xpos("bottle_default_site")
+            # bottle_top_pos = bottle_bottom_pos + global_offset
+            # print("Bottle top pos: ", bottle_top_pos)
+            # print("Bottle bos default site: ", self.sim.data.get_site_xpos("bottle_default_site"))
+            # print("Gripper xpos: ", self.sim.data.get_site_xpos("gripper0_right_grip_site"))
+            # print("Bottle geom: ", self.bottle.geom_size)
+            # print("Gripper: ",self.sim.data.get_site_xpos(self.robots[0].gripper.important_sites["grip_site"]))
+
+            
             # grasping reward
 
             if self._check_grasp(gripper=self.robots[0].gripper, object_geoms=self.bottle):
