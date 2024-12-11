@@ -272,13 +272,40 @@ class BottleFlipTask(ManipulationEnv):
             bottle_bottom_pos = self.sim.data.get_site_xpos("bottle_default_site")
             bottle_top_pos = bottle_bottom_pos + bottle_top_offset
             # print("bottle bottom: ", bottle_bottom_pos)
-            # print("bottle pos: ", bottle_top_pos)
             right_gripper_pos = self.sim.data.get_site_xpos("gripper0_right_grip_site")
             dist_to_top = np.linalg.norm(right_gripper_pos - bottle_top_pos)
-            # print("Dist between gripper and top of bottle: ",dist_to_top)
+            # print("Dist to bottle: ",dist_to_top)
             reaching_reward = 1 - np.tanh(10.0 * dist_to_top)
             reward += reaching_reward
             # print("Gripper: ", right_gripper_pos)
+            # print("bottle pos: ", bottle_top_pos)
+
+            # gripper_bodies = ['gripper0_right_right_gripper', 'gripper0_right_eef', 'gripper0_right_leftfinger', 'gripper0_right_finger_joint1_tip', 'gripper0_right_rightfinger', 'gripper0_right_finger_joint2_tip']
+            # for body_name in gripper_bodies:
+            #     pos = self.sim.data.get_body_xpos(body_name)
+            #     print(body_name,": ",pos)
+
+            # print("gripper joint1: ",self.sim.data.get_joint_qpos("gripper0_right_finger_joint1"))
+            # print("gripper joint2: ",self.sim.data.get_joint_qpos("gripper0_right_finger_joint2"))
+
+            joint1_qpos = self.sim.data.get_joint_qpos("gripper0_right_finger_joint1")
+            joint2_qpos = self.sim.data.get_joint_qpos("gripper0_right_finger_joint2")
+
+            gripper_width = abs(joint1_qpos - joint2_qpos)
+            # print("Gripper width: ",gripper_width)
+            if gripper_width < 0.02:
+                fully_closed = True
+                fully_closed_penalty = 0.25 - np.tanh(120 * gripper_width)
+                reward -= fully_closed_penalty
+                # print("Closed penalty: ", fully_closed_penalty)
+            else:
+                fully_closed = False
+            # print("Fully closed: ", fully_closed)
+
+            # gripper_names = ['gripper0_right_ft_frame', 'gripper0_right_grip_site', 'gripper0_right_ee_x', 'gripper0_right_ee_y', 'gripper0_right_ee_z', 'gripper0_right_grip_site_cylinder']
+            # for name in gripper_names:
+            #     gripper_pos = self.sim.data.get_site_xpos(name)
+            #     print(name,": ",gripper_pos)
             # print("Dist: ", dist_to_top)
 
             # print("Bottle top offset: ", bottle_top_offset)
@@ -308,10 +335,12 @@ class BottleFlipTask(ManipulationEnv):
             # print("Gripper: ",self.sim.data.get_site_xpos(self.robots[0].gripper.important_sites["grip_site"]))
 
             
-            # grasping reward
+            # grasping reward only if gripper isn't fully closed 
+            # ensure the bottle is inbetween the gripper
 
-            if self._check_grasp(gripper=self.robots[0].gripper, object_geoms=self.bottle):
+            if not fully_closed and self._check_grasp(gripper=self.robots[0].gripper, object_geoms=self.bottle):
                 reward += 0.25
+                # print("GRASP DETECTED")
 
         # Scale reward if requested
         if self.reward_scale is not None:
@@ -500,3 +529,15 @@ class BottleFlipTask(ManipulationEnv):
 
         # bottle is higher than the table top above a margin
         return bottle_height > table_height + 0.08
+    
+    def get_bottle_lift(self):
+        """
+        Returns:
+            float: height bottle has been lifted
+        """
+        bottle_height = self.sim.data.body_xpos[self.bottle_body_id][2]
+        table_height = self.model.mujoco_arena.table_offset[2]
+
+        table_thickness = 0.06468510336943989
+        # bottle is higher than the table top above a margin
+        return (bottle_height - table_height) + table_thickness
