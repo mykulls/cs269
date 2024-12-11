@@ -265,14 +265,21 @@ class BottleFlipTask(ManipulationEnv):
             # Get position of top of bottle
             bottle_quaternion = self.sim.data.get_body_xquat(self.bottle.root_body)
             magnitude = np.sum(np.sqrt(bottle_quaternion[1:]**2))
-            bottle_top_offset = bottle_quaternion[1:]/magnitude * 0.2
+            # print("nromalized: ",bottle_quaternion[1:]/magnitude)
+            bottle_height = 0.085
+            bottle_top_offset = bottle_quaternion[1:]/magnitude * bottle_height # 0.085 is the height of bottle
+            # print("Offset: ", bottle_top_offset)
             bottle_bottom_pos = self.sim.data.get_site_xpos("bottle_default_site")
             bottle_top_pos = bottle_bottom_pos + bottle_top_offset
+            # print("bottle bottom: ", bottle_bottom_pos)
+            # print("bottle pos: ", bottle_top_pos)
             right_gripper_pos = self.sim.data.get_site_xpos("gripper0_right_grip_site")
             dist_to_top = np.linalg.norm(right_gripper_pos - bottle_top_pos)
             # print("Dist between gripper and top of bottle: ",dist_to_top)
             reaching_reward = 1 - np.tanh(10.0 * dist_to_top)
             reward += reaching_reward
+            # print("Gripper: ", right_gripper_pos)
+            # print("Dist: ", dist_to_top)
 
             # print("Bottle top offset: ", bottle_top_offset)
 
@@ -309,7 +316,7 @@ class BottleFlipTask(ManipulationEnv):
         # Scale reward if requested
         if self.reward_scale is not None:
             reward *= self.reward_scale / 2.25
-
+        # print("Reward: ", reward)
         return reward
 
     def _load_model(self):

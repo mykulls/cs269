@@ -6,7 +6,7 @@ ep_rew_mean = []
 total_timesteps = []
 
 # Open the file and read the lines
-with open('ppo_5mil_bottle_top_rewards.txt', 'r') as file:
+with open('ppo_5mil_bottle_top_height08_rewards.txt', 'r') as file:
     for line in file:
         # Split the line by '|' and strip extra spaces
         parts = [part.strip() for part in line.split('|')]
