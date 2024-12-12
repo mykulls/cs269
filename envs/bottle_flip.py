@@ -341,6 +341,12 @@ class BottleFlipTask(ManipulationEnv):
             if not fully_closed and self._check_grasp(gripper=self.robots[0].gripper, object_geoms=self.bottle):
                 reward += 0.25
                 # print("GRASP DETECTED")
+            
+            # make smooth reward function for lift
+            # smooth concave up curve from 0 to 1 when dist is from 0 to 0.015
+            amount_lifted = self.get_bottle_lift()
+            # print("Lifted: ",amount_lifted)
+            reward += np.tanh(200*(amount_lifted - 0.015)) + 1
 
         # Scale reward if requested
         if self.reward_scale is not None:
@@ -538,6 +544,6 @@ class BottleFlipTask(ManipulationEnv):
         bottle_height = self.sim.data.body_xpos[self.bottle_body_id][2]
         table_height = self.model.mujoco_arena.table_offset[2]
 
-        table_thickness = 0.06468510336943989
+        table_thickness = 0.0646
         # bottle is higher than the table top above a margin
-        return (bottle_height - table_height) + table_thickness
+        return (bottle_height - table_height) - table_thickness
