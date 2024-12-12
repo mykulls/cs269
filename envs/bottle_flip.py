@@ -338,15 +338,17 @@ class BottleFlipTask(ManipulationEnv):
             # grasping reward only if gripper isn't fully closed 
             # ensure the bottle is inbetween the gripper
 
-            if not fully_closed and self._check_grasp(gripper=self.robots[0].gripper, object_geoms=self.bottle):
+            grasped = self._check_grasp(gripper=self.robots[0].gripper, object_geoms=self.bottle)
+            if not fully_closed and grasped:
                 reward += 0.25
                 # print("GRASP DETECTED")
             
             # make smooth reward function for lift
             # smooth concave up curve from 0 to 1 when dist is from 0 to 0.015
-            amount_lifted = self.get_bottle_lift()
-            # print("Lifted: ",amount_lifted)
-            reward += np.tanh(200*(amount_lifted - 0.015)) + 1
+            if grasped:
+                amount_lifted = self.get_bottle_lift()
+                # print("Lifted: ",amount_lifted)
+                reward += np.tanh(200*(amount_lifted - 0.015)) + 1
 
         # Scale reward if requested
         if self.reward_scale is not None:
