@@ -13,4 +13,10 @@ test:
 agent:
 	$(PYTHON) scripts/test_agent.py
 
+hard_coded_action:
+	$(PYTHON) scripts/hard_code_flip.py
+
+manual_control:
+	$(PYTHON) scripts/manual_control_robot.py
+
 all: train agent
