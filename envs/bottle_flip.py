@@ -220,6 +220,11 @@ class BottleFlipTask(ManipulationEnv):
         self.prev_bottle_bottom_pos = self.sim.data.get_site_xpos("bottle_default_site")
         self.prev_bottle_top_pos = self.get_bottle_top_pos()
         self.prev_gripper_center_pos = self.sim.data.get_site_xpos("gripper0_right_grip_site")
+        self.lifted = False
+        self.flipped = False
+        self.landed = False
+        self.max_reward = 6
+        self.success = False
 
     def get_bottle_top_pos(self):
         # Get position of top of bottle
@@ -267,27 +272,7 @@ class BottleFlipTask(ManipulationEnv):
 
         # use a shaping reward
         elif self.reward_shaping:
-
-            # reaching reward
-            # dist = self._gripper_to_target(
-            #     gripper=self.robots[0].gripper, target=self.bottle.root_body, target_type="body", return_distance=True
-            # )
-            # # print("dist: ", dist)
-            # reaching_reward = 1 - np.tanh(10.0 * dist)
-            # reward += reaching_reward
-            # print("reward", reward)
-            # print("Bottle body pos: ", self.sim.data.get_body_xpos(self.bottle.root_body))
-            
-
-            # Get position of top of bottle
-            # bottle_quaternion = self.sim.data.get_body_xquat(self.bottle.root_body)
-            # magnitude = np.sum(np.sqrt(bottle_quaternion[1:]**2))
-            # # print("nromalized: ",bottle_quaternion[1:]/magnitude)
-            # bottle_height = 0.085
-            # bottle_top_offset = bottle_quaternion[1:]/magnitude * bottle_height # 0.085 is the height of bottle
-            # # print("Offset: ", bottle_top_offset)
-            # bottle_bottom_pos = self.sim.data.get_site_xpos("bottle_default_site")
-            # bottle_top_pos = bottle_bottom_pos + bottle_top_offset
+            # Reward for distance to bottle: max of 1
             bottle_top_pos = self.get_bottle_top_pos()
             # print("bottle bottom: ", bottle_bottom_pos)
             right_gripper_pos = self.sim.data.get_site_xpos("gripper0_right_grip_site")
@@ -298,19 +283,12 @@ class BottleFlipTask(ManipulationEnv):
             # print("Gripper: ", right_gripper_pos)
             # print("bottle pos: ", bottle_top_pos)
 
-            # gripper_bodies = ['gripper0_right_right_gripper', 'gripper0_right_eef', 'gripper0_right_leftfinger', 'gripper0_right_finger_joint1_tip', 'gripper0_right_rightfinger', 'gripper0_right_finger_joint2_tip']
-            # for body_name in gripper_bodies:
-            #     pos = self.sim.data.get_body_xpos(body_name)
-            #     print(body_name,": ",pos)
-
-            # print("gripper joint1: ",self.sim.data.get_joint_qpos("gripper0_right_finger_joint1"))
-            # print("gripper joint2: ",self.sim.data.get_joint_qpos("gripper0_right_finger_joint2"))
-
             joint1_qpos = self.sim.data.get_joint_qpos("gripper0_right_finger_joint1")
             joint2_qpos = self.sim.data.get_joint_qpos("gripper0_right_finger_joint2")
-
             gripper_width = abs(joint1_qpos - joint2_qpos)
             # print("Gripper width: ",gripper_width)
+
+            # Penalize fully closed gripper: max penalty of -0.25
             if gripper_width < 0.02:
                 fully_closed = True
                 fully_closed_penalty = 0.25 - np.tanh(120 * gripper_width)
@@ -318,44 +296,11 @@ class BottleFlipTask(ManipulationEnv):
                 # print("Closed penalty: ", fully_closed_penalty)
             else:
                 fully_closed = False
-            # print("Fully closed: ", fully_closed)
 
-            # gripper_names = ['gripper0_right_ft_frame', 'gripper0_right_grip_site', 'gripper0_right_ee_x', 'gripper0_right_ee_y', 'gripper0_right_ee_z', 'gripper0_right_grip_site_cylinder']
-            # for name in gripper_names:
-            #     gripper_pos = self.sim.data.get_site_xpos(name)
-            #     print(name,": ",gripper_pos)
-            # print("Dist: ", dist_to_top)
-
-            # print("Bottle top offset: ", bottle_top_offset)
-
-            # bottle_orientation = self.sim.data.get_body_xquat(self.bottle.root_body)  # Quaternion
-            # print("Bottle Orientation: ", bottle_orientation)
-            # rotation = R.from_quat(bottle_orientation)
-            # print("Rotation: ", rotation)
-            # height_offset = np.array([0, 0, 0.2])  # Height along local z-axis
-            # print(height_offset.shape)
-            # # global_offset = rotation_matrix @ height_offset
-            # global_offset = rotation.apply(height_offset)
-            # print("Ofset 1: ", global_offset)
-
-            # adjust_quat = bottle_orientation
-            # adjust_quat[3] += 3.1415926
-            # rot2 = R.from_quat(adjust_quat)
-            # offset2 = rot2.apply(height_offset)
-            # print("Offset2: ",offset2)
-
-            # bottle_bottom_pos = self.sim.data.get_site_xpos("bottle_default_site")
-            # bottle_top_pos = bottle_bottom_pos + global_offset
-            # print("Bottle top pos: ", bottle_top_pos)
-            # print("Bottle bos default site: ", self.sim.data.get_site_xpos("bottle_default_site"))
-            # print("Gripper xpos: ", self.sim.data.get_site_xpos("gripper0_right_grip_site"))
-            # print("Bottle geom: ", self.bottle.geom_size)
-            # print("Gripper: ",self.sim.data.get_site_xpos(self.robots[0].gripper.important_sites["grip_site"]))
-
-            
+            fully_opened = True if gripper_width > 0.06 else False
+    
             # grasping reward only if gripper isn't fully closed 
             # ensure the bottle is inbetween the gripper
-
             grasped = self._check_grasp(gripper=self.robots[0].gripper, object_geoms=self.bottle)
             if not fully_closed and grasped:
                 reward += 0.25
@@ -366,18 +311,96 @@ class BottleFlipTask(ManipulationEnv):
             if grasped:
                 amount_lifted = self.get_bottle_lift()
                 # print("Lifted: ",amount_lifted)
-                reward += np.tanh(200*(amount_lifted - 0.015)) + 1
+                reward += min(np.tanh(200*(amount_lifted - 0.015)) + 1, 1)
 
-                bottle_bottom_pos = self.sim.data.get_site_xpos("bottle_default_site")
-                bottle_vel = bottle_bottom_pos - self.prev_bottle_bottom_pos
-                gripper_vel = right_gripper_pos - self.prev_gripper_center_pos
+            if self.lifted:
+                reward = 2.25
+                reward += self.flip_reward(
+                    fully_closed,
+                    grasped,
+                    fully_opened,
+                    bottle_top_pos,
+                    right_gripper_pos
+                )
                 
 
         # Scale reward if requested
         if self.reward_scale is not None:
-            reward *= self.reward_scale / 2.25
-        print("Reward: ", reward)
+            reward *= self.reward_scale / self.max_reward
+        # print("Reward: ", reward)
         return reward
+    
+    def flip_reward(self, fully_closed, grasped, fully_opened, bottle_top_pos, gripper_center_pos):
+        bottle_bottom_pos = self.sim.data.get_site_xpos("bottle_default_site")
+        bottle_vel = bottle_bottom_pos - self.prev_bottle_bottom_pos
+        # gripper_center_pos = self.sim.data.get_site_xpos("gripper0_right_grip_site")
+        gripper_vel = gripper_center_pos - self.prev_gripper_center_pos
+
+        reward = 0.0
+
+        bottle_z_diff = bottle_bottom_pos - bottle_top_pos
+        if self.flipped:
+            reward += 1
+        elif grasped:
+            # upward velocity gripper reward
+            # max of 0.3
+            important_vel = np.sqrt(gripper_vel[2]**2 + gripper_vel[0]**2)
+            # want reward from 0 to 0.3 with velocity from 0 to 1? 0.015 is considered lifted
+            # we want really fast so velocity of 1 is like moving 7 times the distance in one frame
+            reward += min(0.3 * (np.tanh(2(important_vel-1))+1), 0.3)
+            
+            # bottle rotation while grasped reward
+            # reward range 0 to 0.7
+            # bottle_z_diff range -0.085 to 0.085
+            # bottle_z_diff = bottle_bottom_pos - bottle_top_pos
+            # we want to reward for going upside down so we want this to be positive and max value of bottle height
+            # range of bottle_z_diff is -0.085 to 0.085
+            reward += min(0.7* (np.tanh(15*(bottle_z_diff-0.085))+1), 0.7)
+        
+        if bottle_z_diff > 0.08: # flip can occur after release also
+                self.flipped = True
+        
+
+        if fully_opened and self.bottle_is_above_table():
+            # airborne velocity reward
+            vel_mag = np.sum(np.sqrt(bottle_vel**2))
+            # more reward than when grasped
+            # velocity range probably from 0 to 1
+            reward += min(0.3* (np.tanh(2(vel_mag-1))+1), 0.3)
+            if self.flipped:
+            # airbone rotation reward
+            # maybe also do top and bottom diff? but the other way????
+            # reward range 0 to 1
+                bottle_z_reverse_diff =  bottle_top_pos - bottle_bottom_pos
+                reward += min(0.7 * (np.tanh(15*(bottle_z_reverse_diff-0.085))+1), 0.7)
+
+        # landing on table orientation reward and contact with table
+        if self.flipped and self.bottle_on_table():
+            bottle_quaternion = self.sim.data.get_body_xquat(self.bottle.root_body)
+            magnitude = np.sum(np.sqrt(bottle_quaternion[1:]**2))
+            norm_bottle_vec = bottle_quaternion[1:] / magnitude
+            z_vec = np.array([0, 0, 1])
+            diff_from_vertical = np.dot(z_vec, norm_bottle_vec)
+            # input from 0 to 1
+            # reward from 0 to 2.75
+            reward += min(2.75*(np.tanh(4(diff_from_vertical-1))+1), 2.75)
+
+            if self.landed and diff_from_vertical > 0.95:
+                self.success = True
+                reward = self.max_reward
+            self.landed = True
+
+        return reward
+
+    def bottle_on_table(self):
+        table_height = self.model.mujoco_arena.table_offset[2]
+
+        bottle_pos = self.sim.data.get_site_xpos("bottle_default_site")
+        x = bottle_pos[0]
+        y = bottle_pos[1]
+        z = bottle_pos[2]
+        return x < 0.4 and x > -0.4 and y < 0.4 and y > -0.4 and z > table_height
+
 
     def _load_model(self):
         """
@@ -549,6 +572,15 @@ class BottleFlipTask(ManipulationEnv):
             self._visualize_gripper_to_target(gripper=self.robots[0].gripper, target=self.bottle)
 
     def _check_success(self):
+        """
+        Check if bottle has been lifted.
+
+        Returns:
+            bool: True if bottle has been lifted
+        """
+        return self.success
+    
+    def bottle_is_above_table(self):
         """
         Check if bottle has been lifted.
 

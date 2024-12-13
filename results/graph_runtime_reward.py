@@ -6,7 +6,7 @@ reward = []
 # total_timesteps = []
 
 # Open the file and read the lines
-with open('manual_lift_reward.txt', 'r') as file:
+with open('unscaled_lift_reward.txt', 'r') as file:
     for line in file:
         # Split the line by '|' and strip extra spaces
         parts = [part.strip() for part in line.split(':')]
@@ -26,7 +26,7 @@ plt.plot(reward_arr, marker='o', linestyle='-', color='b', label='Reward')
 
 # Add labels, title, and legend
 plt.xlabel('Timesteps', fontsize=14)
-plt.ylabel('Reward', fontsize=14)
+plt.ylabel('Un-normalized Reward', fontsize=14)
 plt.title('Reward vs Timesteps During An Episode (Hard-coded Lift)', fontsize=16)
 plt.legend(fontsize=12)
 

@@ -22,8 +22,8 @@ def run_actions(actions, type, pause=True):
     # print(f'Running {type} actions')
     for i in range(len(actions)):
         env.render()
-        # if pause:
-            # input("Press enter to continue")
+        if pause:
+            input("Press enter to continue")
         # action = [0., 0., 0., 0., 0., 0., 0.]
         action = actions[i]
         # print("action: ",action)
@@ -42,7 +42,7 @@ init_actions = [open_grip_vec for i in range(12)]
 x_actions = [x_vec+open_grip_vec for i in range(2)]
 lower_actions = [-1*z_vec+close_grip_vec for i in range(3)]
 grab_actions = [close_grip_vec for i in range(8)]
-lift_actions = [z_vec+close_grip_vec for i in range(6)]
+lift_actions = [z_vec+close_grip_vec for i in range(20)]
 toss_actions = [50000000*z_vec + 5000000*x_vec +close_grip_vec for i in range(4)]
 release_actions = [50000000*z_vec + 5000000*x_vec +open_grip_vec for i in range(10)]
 
@@ -51,8 +51,8 @@ run_actions(x_actions, "x", pause=False)
 run_actions(lower_actions, "lower", pause=False)
 run_actions(grab_actions, "grab", pause=False)
 run_actions(lift_actions, "lift", pause=False)
-run_actions(toss_actions, "toss", pause=False)
-run_actions(release_actions, "release", pause=False)
+run_actions(toss_actions, "toss", pause=True)
+run_actions(release_actions, "release", pause=True)
 
 # run 10 random actions
 # for i in range(len(actions)):
