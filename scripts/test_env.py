@@ -12,6 +12,7 @@ env = suite.make(
     use_object_obs=True,
     control_freq=20,
     render_camera=None,
+    reward_shaping=True
 )
 
 # Test the environment
@@ -28,6 +29,7 @@ for _ in range(1000):
 
     # assert "object-state" not in obs
     env.render()
+    input("Press enter to continue")
     action = [0., 0., 0., 0., 0., 0., 0.]
     obs, reward, done, info = env.step(action)
 

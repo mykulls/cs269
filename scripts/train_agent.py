@@ -42,9 +42,9 @@ model_kwargs = {
 model = PPO("MlpPolicy", env, verbose=1)
 
 # Train the agent
-model.learn(total_timesteps=5000000)
+model.learn(total_timesteps=3000000)
 
 # Save the model
 # model.save(MODEL_PATH + FILENAME)
-model.save(MODEL_PATH+ "ppo_5mil_bottle_top_lift")
+model.save(MODEL_PATH+ "ppo_3mil_smooth_lift_when_grasped_reward")
 # env.save(MODEL_PATH + "vec_normalize_" + FILENAME + '.pkl')

@@ -245,7 +245,8 @@ if __name__ == "__main__":
             for gripper_ac in all_prev_gripper_actions[device.active_robot]:
                 all_prev_gripper_actions[device.active_robot][gripper_ac] = action_dict[gripper_ac]
 
-            # print("Action: ", env_action)
+            input("Press enter")
+            print("Action: ", env_action)
             env.step(env_action)
             env.render()
 
